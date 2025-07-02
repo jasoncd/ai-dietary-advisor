@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { pool } from "./db";
 
 const app = express();
 app.use(express.json());
@@ -36,7 +37,59 @@ app.use((req, res, next) => {
   next();
 });
 
+// Initialize database schema
+async function initializeDatabase() {
+  try {
+    log("Initializing database schema...");
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS health_profiles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        age INTEGER NOT NULL,
+        gender VARCHAR(50) NOT NULL,
+        body_weight VARCHAR(100) NOT NULL,
+        dietary_habit VARCHAR(255) NOT NULL,
+        health_problem TEXT,
+        medication TEXT,
+        daily_activities TEXT NOT NULL,
+        health_goal TEXT NOT NULL,
+        ai_advice TEXT NOT NULL,
+        share_text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        health_profile_id INTEGER NOT NULL REFERENCES health_profiles(id) ON DELETE CASCADE,
+        parent_comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+        author_name VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    log("Database schema initialized successfully");
+  } catch (error) {
+    log(`Database initialization error: ${error.message}`);
+    // Don't exit - let the app start anyway
+  }
+}
+
 (async () => {
+  // Initialize database schema first
+  await initializeDatabase();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
