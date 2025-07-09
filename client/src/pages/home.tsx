@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Utensils, 
   Info, 
@@ -276,6 +276,10 @@ export default function Home() {
       };
 
       await apiRequest("POST", "/api/health-profiles", profileData);
+
+      // Invalidate cache so Records page shows the new profile
+      queryClient.invalidateQueries({ queryKey: ["/api/health-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/health-profiles/search"] });
 
       toast({
         title: "Saved successfully",
